@@ -9,7 +9,8 @@ library(tidyverse)
 
 # Dataset
 ```{r read csv}
-df <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vS_CyX5w7gOyekyzKDiwO2LQ9h5q9r5CLgNISIFXfED3X7IXNAEES5Kg_4vCyK_Q10UDCt_RZtLYyO7/pub?output=csv")
+# df <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vS_CyX5w7gOyekyzKDiwO2LQ9h5q9r5CLgNISIFXfED3X7IXNAEES5Kg_4vCyK_Q10UDCt_RZtLYyO7/pub?output=csv")
+df <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vQo5nCKqjmclsLAUdGF3spDrwRAIqLT1ChCDj8yQ6DcgO0CDwhdQRIw3lMbA9du1FEdaR084FI-Xknc/pub?gid=861337044&single=true&output=csv") # data until march 14, 2019
 ```
 # Data cleaning
 ```{r visdat}
@@ -77,7 +78,8 @@ Table f concentration by age with means, etc
 ```{r table F by group age mean sd etc}
 df %>% 
   group_by(f_concentration) %>% 
-  summarise(mean = mean(viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0), 
+  summarise(n = n(), 
+            mean = mean(viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0), 
             sd = sd(viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0), 
             min = min(viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0), 
             max = max(viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0))
