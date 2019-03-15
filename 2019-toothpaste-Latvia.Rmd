@@ -5,6 +5,8 @@ output: html_notebook
 # Packages
 ```{r, warning=FALSE, results='hide'}
 library(tidyverse)
+if (!require("visdat")) install.packages("visdat") #instala paquetes en caso que no est?n instalados
+if (!require("kableExtra")) install.packages("kableExtra") #instala paquetes en caso que no est?n instalados
 ```
 
 # Dataset
@@ -16,12 +18,43 @@ df <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vQo5nCKqjmclsLAU
 ```{r visdat}
 visdat::vis_dat(df)
 ```
+
+```{r}
+names(df)
+```
+
 Clean names and remove empty cols
 ```{r clean names and remove columns}
 df <- df %>% 
-  janitor::clean_names(.) %>% 
+  # janitor::clean_names(.) %>% 
   janitor::remove_empty(., c("rows", "cols")) %>% 
-  select(-c(f_konc_otrai_pastai, laika_zimogs))
+  select(-c(`F concentration for the second paste`, `Laika zimogs`))
+```
+
+Age groups
+```{r create age groups}
+df <- df %>% 
+  mutate(age_group = case_when(
+    `Age` < 6 ~ "0 ~ 5", 
+    `Age` < 13 ~ "6 ~ 12", 
+    `Age` < 19 ~ "13 ~ 18", 
+    TRUE ~ "> 18"
+  ))
+```
+
+```{r table age groups}
+table(df$age_group)
+```
+
+```{r relevel age groups}
+df$age_group <- fct_relevel(df$age_group, "0 ~ 5" , "6 ~ 12", "13 ~ 18", "> 18" )
+```
+
+
+IN age group change NA to adult
+
+```{r}
+df$`Children/Adult` <- df$`Children/Adult` %>% replace_na("adult")
 ```
 
 # EDA
@@ -33,35 +66,53 @@ summary(df)
 ```
 Convert F to number
 ```{r Convert F to number}
-df$fluoridu_koncentracija_zobu_pasta_2 <- as.integer(df$fluoridu_koncentracija_zobu_pasta)
+df$`F concentration 2` <- as.integer(df$`F concentration`)
 ```
 ```{r Check distribution of F in toothpaste}
 df %>% 
-  ggplot(aes(x = fluoridu_koncentracija_zobu_pasta_2)) + 
+  ggplot(aes(x = `F concentration 2`)) + 
   geom_histogram(bins = 5)
 ```
 Create a new var grouping F concentration
 ```{r F groups}
 df <- df %>% 
-  mutate(f_concentration = case_when(
-    fluoridu_koncentracija_zobu_pasta_2 < 1 ~ "0 - No fluoride", 
-    fluoridu_koncentracija_zobu_pasta_2 < 550 ~ "1 - Between 1 to 550 ppm", 
-    fluoridu_koncentracija_zobu_pasta_2 < 1000 ~ "2 - Between 551 to 999 ppm",
-    fluoridu_koncentracija_zobu_pasta_2 < 1501 ~ "3 - Between 1000 and 1500 ppm", 
-    fluoridu_koncentracija_zobu_pasta_2 > 1501 ~ "4 - Over 1500 ppm", 
+  mutate(`f_concentration` = case_when(
+    `F concentration 2` < 1 ~ "No fluoride", 
+    `F concentration 2` < 550 ~ "1 to 550 ppm", 
+    `F concentration 2` < 1000 ~ "551 to 999 ppm",
+    `F concentration 2` < 1501 ~ "1000 and 1500 ppm", 
+    `F concentration 2` > 1501 ~ ">1500 ppm", 
     TRUE ~ "NA"
   ))
 ```
 
+```{r table concentration}
+table(df$f_concentration)
+```
+
+```{r}
+df$f_concentration <- factor(df$f_concentration,, 
+                             levels = c(
+                              "No fluoride", 
+                              "1 to 550 ppm", 
+                              "551 to 999 ppm", 
+                              "1000 and 1500 ppm", 
+                              "NA"))
+```
+
+
+
+
+
 Check as table
 ```{r F Main table}
-prop.table((table(df$f_concentration))) * 100
+prop.table((table(df$`f_concentration`))) * 100
 ```
 Check with graph
 ```{r F main table as graph}
 df %>% 
   # na.omit() %>% 
-  ggplot(aes(x = f_concentration)) + 
+  ggplot(aes(x = `f_concentration`)) + 
   geom_bar() + 
   coord_flip() + 
   theme_minimal()
@@ -70,59 +121,123 @@ Check groups of F concentration by age
 ```{r F by age boxplot}
 df %>% 
   # na.omit() %>% 
-  ggplot(aes(x = f_concentration, y = viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0)) +
+  ggplot(aes(x = `f_concentration`, y = `Age`)) +
   geom_boxplot() +
   coord_flip()
 ```
+
+```{r plot porcentaje por edad}
+df %>% 
+  na.omit(f_concentration) %>% 
+  group_by(age_group, f_concentration) %>% 
+  summarise(count = n()) %>% 
+  mutate(perc=count/sum(count)) %>% 
+  ggplot(aes(x = age_group, y = perc*100, fill = f_concentration)) +
+  geom_bar(stat="identity") + 
+  facet_grid(f_concentration ~ .) + 
+  theme_minimal() + 
+  labs(title = "Fluoride Concentration toothpaste by age group", 
+       y = "Percentage", 
+       x = "Age group", 
+       fill = "Fluoride concentration")
+
+```
+```{r}
+df %>% 
+  na.omit(f_concentration) %>% 
+  group_by(age_group, f_concentration) %>% 
+  summarise(count = n()) %>% 
+  mutate(perc=count/sum(count)) %>% 
+  ggplot(aes(x = age_group, y = perc*100, fill = f_concentration)) +
+  geom_bar(stat="identity") + 
+  facet_wrap(~f_concentration) + 
+  theme_minimal() + 
+  labs(title = "Fluoride Concentration toothpaste by age group", 
+       y = "Percentage", 
+       x = "Age group", 
+       fill = "Fluoride concentration")
+```
+```{r}
+df %>% 
+  na.omit(f_concentration) %>% 
+  group_by(age_group, f_concentration) %>% 
+  summarise(count = n()) %>% 
+  mutate(perc=count/sum(count)) %>% 
+  ggplot(aes(x = age_group, y = perc*100, fill = f_concentration)) +
+  geom_bar(stat="identity") + 
+  facet_wrap(~f_concentration) + 
+  theme_minimal() + 
+  labs(title = "Fluoride Concentration toothpaste by age group", 
+       y = "Percentage", 
+       x = "Age group", 
+       fill = "Fluoride concentration") + 
+  coord_flip()
+```
+
+
+
 Table f concentration by age with means, etc
 ```{r table F by group age mean sd etc}
 df %>% 
-  group_by(f_concentration) %>% 
+  group_by(`f_concentration`) %>% 
   summarise(n = n(), 
-            mean = mean(viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0), 
-            sd = sd(viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0), 
-            min = min(viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0), 
-            max = max(viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0))
+            mean = mean(`Age`), 
+            sd = sd(`Age`), 
+            min = min(`Age`), 
+            max = max(`Age`))
 ```
-
+```{r plot by city}
+df %>% 
+  na.omit(f_concentration) %>% 
+  group_by(`Lives in`, f_concentration) %>% 
+  summarise(count = n()) %>% 
+  mutate(perc=count/sum(count)) %>% 
+  ggplot(aes(x = `Lives in`, y = perc*100, fill = f_concentration)) +
+  geom_bar(stat="identity") + 
+  facet_wrap(~f_concentration) + 
+  theme_minimal() + 
+  labs(title = "Fluoride Concentration toothpaste by location", 
+       y = "Percentage", 
+       x = "Location", 
+       fill = "Fluoride concentration")
+```
+```{r plot by city 2}
+df %>% 
+  na.omit(f_concentration) %>% 
+  group_by(`Lives in`, f_concentration) %>% 
+  summarise(count = n()) %>% 
+  mutate(perc=count/sum(count)) %>% 
+  ggplot(aes(x = `Lives in`, y = perc*100, fill = f_concentration)) +
+  geom_bar(stat="identity") + 
+  facet_wrap(~f_concentration) + 
+  theme_minimal() + 
+  labs(title = "Fluoride Concentration toothpaste by location", 
+       y = "Percentage", 
+       x = "Location", 
+       fill = "Fluoride concentration") + 
+  coord_flip()
+```
 
 Cuantos nombres de pastas hay?
 ```{r check toothpastes names}
 df %>% 
-  group_by(zobu_pastas_nosaukums) %>% 
+  group_by(Toothpaste) %>% 
   summarise(count = n())
 ```
 
-Age groups
-```{r create age groups}
-df <- df %>% 
-  mutate(age_group = case_when(
-    viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0 < 6 ~ "0 ~ 5", 
-    viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0 < 13 ~ "6 ~ 12", 
-    viena_gimenes_locekla_vecums_ja_jaunaks_par_gada_vecumu_rakstit_0 < 19 ~ "13 ~ 18", 
-    TRUE ~ "More than 18"
-  ))
-```
 
-```{r table age groups}
-table(df$age_group)
-```
-
-```{r relevel age groups}
-df$age_group <- df$age_group %>% 
-  fct_relevel("0 ~ 5" , "6 ~ 12", "13 ~ 18", "More than 18" ) %>% 
-  levels()
-```
 
 
 ```{r table age by concentration}
 df %>% 
-  janitor::tabyl(age_group, f_concentration) %>% 
+  janitor::tabyl(age_group, `f_concentration`) %>% 
   knitr::kable()
 ```
-```{r nice table age by concentration}
+
+
+```{r table live by concentration}
 df %>% 
-  janitor::tabyl(age_group, f_concentration) %>% 
+  janitor::tabyl(`Lives in`, `f_concentration`) %>% 
   janitor::adorn_totals(c("row", "col")) %>%
   janitor::adorn_percentages("row") %>% 
   janitor::adorn_pct_formatting(rounding = "half up", digits = 0) %>%
@@ -132,11 +247,47 @@ df %>%
 ```
 
 
+```{r nice table age by concentration}
+df %>% 
+  janitor::tabyl(age_group, `f_concentration`) %>% 
+  janitor::adorn_totals(c("row", "col")) %>%
+  janitor::adorn_percentages("row") %>% 
+  janitor::adorn_pct_formatting(rounding = "half up", digits = 0) %>%
+  janitor::adorn_ns() %>%
+  janitor::adorn_title("combined") %>%
+  knitr::kable() %>% kableExtra::kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+
 ```{r see names F free toothpastes }
 df %>%  
-  filter(f_concentration == "0 - No fluoride") %>% 
+  filter(`f_concentration` == "0 - No fluoride") %>% 
   #na.omit() %>%    # Using "data", filter out all rows with NAs in aa 
-  group_by(zobu_pastas_nosaukums) %>%          # Then, with the filtered data, group it by "bb"
-  summarise(Unique_Elements = n_distinct(zobu_pastas_nosaukums))  %>%   # Now summarise with unique elements per group
+  group_by(`Toothpaste`) %>%          # Then, with the filtered data, group it by "bb"
+  summarise(Unique_Elements = n_distinct(`Toothpaste`))  %>%   # Now summarise with unique elements per group
   knitr::kable()
 ```
+
+See all toothpastes
+
+
+```{r see names all toothpastes }
+df %>%  
+  filter(!`f_concentration` == "0 - No fluoride") %>% 
+  #na.omit() %>%    # Using "data", filter out all rows with NAs in aa 
+  group_by(`Toothpaste`) %>%          # Then, with the filtered data, group it by "bb"
+  summarise(Unique_Elements = n_distinct(`Toothpaste`))  %>%   # Now summarise with unique elements per group
+  knitr::kable()
+```
+
+
+
+
+```{r Cuantas familias tienes pastas de niños?}
+df %>% 
+  group_by(`Children/Adult`, `Family code`) %>% 
+  summarise(n = n()) %>% 
+  spread(`Children/Adult`, n)
+```
+
