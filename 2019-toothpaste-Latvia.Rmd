@@ -1,6 +1,10 @@
 ---
 title: "2019 Toothpaste Latvia"
-output: html_notebook
+output: 
+  html_notebook: 
+    toc: yes
+    toc_float: true
+    fig_caption: true
 ---
 # Packages
 ```{r, warning=FALSE, results='hide'}
@@ -10,7 +14,8 @@ if (!require("kableExtra")) install.packages("kableExtra") #instala paquetes en 
 ```
 
 # Dataset
-```{r read csv}
+Hidden for anonimity
+```{r read csv, include=FALSE}
 # df <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vS_CyX5w7gOyekyzKDiwO2LQ9h5q9r5CLgNISIFXfED3X7IXNAEES5Kg_4vCyK_Q10UDCt_RZtLYyO7/pub?output=csv")
 df <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vQo5nCKqjmclsLAUdGF3spDrwRAIqLT1ChCDj8yQ6DcgO0CDwhdQRIw3lMbA9du1FEdaR084FI-Xknc/pub?gid=861337044&single=true&output=csv") # data until march 14, 2019
 ```
@@ -28,7 +33,7 @@ Clean names and remove empty cols
 df <- df %>% 
   # janitor::clean_names(.) %>% 
   janitor::remove_empty(., c("rows", "cols")) %>% 
-  select(-c(`F concentration for the second paste`, `Laika zimogs`))
+  select(-c(`F concentration for the second paste`, `Laika zīmogs`))
 ```
 
 Age groups
@@ -40,14 +45,13 @@ df <- df %>%
     `Age` < 19 ~ "13 ~ 18", 
     TRUE ~ "> 18"
   ))
-```
 
-```{r table age groups}
-table(df$age_group)
-```
 
-```{r relevel age groups}
+#  relevel age groups
 df$age_group <- fct_relevel(df$age_group, "0 ~ 5" , "6 ~ 12", "13 ~ 18", "> 18" )
+
+# table age groups
+table(df$age_group)
 ```
 
 
@@ -93,11 +97,11 @@ table(df$f_concentration)
 ```{r}
 df$f_concentration <- factor(df$f_concentration,, 
                              levels = c(
+                              "NA",
                               "No fluoride", 
                               "1 to 550 ppm", 
                               "551 to 999 ppm", 
-                              "1000 and 1500 ppm", 
-                              "NA"))
+                              "1000 and 1500 ppm"))
 ```
 
 
@@ -119,12 +123,19 @@ df %>%
 ```
 Check groups of F concentration by age
 ```{r F by age boxplot}
+
 df %>% 
   # na.omit() %>% 
   ggplot(aes(x = `f_concentration`, y = `Age`)) +
   geom_boxplot() +
-  coord_flip()
+  coord_flip() + 
+  theme_minimal() + 
+  labs(title = "Age distribution per toothpaste F concentration type", 
+       x = "Fluoride concentration", 
+       y = "Age (years)") 
+
 ```
+
 
 ```{r plot porcentaje por edad}
 df %>% 
@@ -281,13 +292,232 @@ df %>%
   knitr::kable()
 ```
 
+# SIGNIFICANCE TEST
+
+## Differences per region?
+
+```{r}
+
+table(df$`Lives in`, df$f_concentration)
+```
+```{r}
+chisq.test(table(df$`Lives in`, df$f_concentration))
+```
+```{r}
+mosaicplot(table(df$f_concentration, df$`Lives in`), shade = T)
+```
 
 
 
-```{r Cuantas familias tienes pastas de niños?}
+## Differences per sex?
+
+```{r}
+chisq.test(table(df$age_group, df$f_concentration))
+```
+```{r}
+mosaicplot(table(df$f_concentration, df$age_group), shade = T)
+```
+
+
+# SAMPLE SIZE CALCULATIONS
+
+```{r add a new var to calculate variance}
+df <- df %>% 
+  mutate(
+    F_variance = case_when(
+      `F concentration` < "1450" ~ "0", 
+      TRUE ~ "1"
+    )
+  )
+```
+
+Calculate var intra and inter
+Intra
+```{r var intra}
+intra <- var(df$F_variance)
+intra
+```
+Inter
+```{r}
+inter <- df %>% 
+  group_by(`School code`) %>% 
+  summarise(variance = var(F_variance)) %>% 
+  summarise(variance_inter = mean(variance))
+inter
+```
+```{r}
+inter / (intra + inter)
+```
+f the ICC is known, for example from a pilot study, it can be used at the design stage of the trial to inform the sample size calculation. The ‘design effect’ (DE) can be used to estimate the extent to which the sample size should be inflated to accommodate for the homogeneity in the clustered data:
+
+      DE = 1+(n-1)ρ
+
+      n = average cluster size(      ρ = ICC for the desired outcome
+
+The DE can then be used to calculate the ‘effective sample size’. This is the ‘real’ sample size in a clustered trial, compared with the number of participants actually enrolled in the study. It is calculated using the formulae below:
+mk / DE, where m = unites per cluster, k = clusters
+
+Hence
+
+
+
+
+
+## Variance inter and intra for rho
+```{r variance intra}
+en <- df %>% 
+  na.omit() %>% 
+  summarise(variance = var(`F concentration`))
+en
+```
+
+```{r variance inter}
+entre <- df %>% 
+  na.omit() %>% 
+  group_by(`School code`) %>% 
+  summarise(variance = var(`F concentration`)) %>% 
+  summarise(variance_mean = mean(variance))
+entre
+```
+
+```{r icc}
+new_rho <- entre/(entre + en)
+```
+
+## Another variance
+
+
+```{r, warning=FALSE, message=FALSE}
+install.packages("epiR")
+library(epiR)
+```
+## Data
+
+```{r}
+p <- 0.50 # expected proportion people using non-fluoridated toothpaste
+b <- 25 # units to be examined per school (cluster)
+```
+
+## EXAMPLE 1
+ The expected prevalence of disease in the population  is `r p`.
+ We wish to conduct a survey, sampling `r b` persons per school. No data
+ are available to provide an estimate of rho, though we suspect
+ the intra-cluster correlation for this disease to be moderate.
+ We wish to be 95% certain of being within 10% of the true population
+ prevalence of disease. How many schools should be sampled?
+
+```{r}
+
+D <- 4
+rho <- (D - 1) / (b - 1)
+cluster_ss <- epiR::epi.clustersize(p = p, # expected prevalence
+                b = b, # sampling per school
+                rho = rho, # difference among variance inside the clusters vs between clusters, i.e. caries prevalence inside every school expected to be homogeneous, and prevalence between schools expected to be homogenous also. 
+                epsilon.r = 0.2, #the acceptable relative error. Relative error is error / expected prevalence
+                conf.level = 0.95)
+
+```
+
+Needed schools 
+```{r need schools 1}
+cluster_ss$clusters
+```
+Sample size total
+```{r total sample size 1}
+cluster_ss$units
+```
+
+
+**We need to sample `r cluster_ss$clusters` schools (`r cluster_ss$units` samples in total)**
+ 
+Reference: 
+Otte J, Gumm I (1997). Intra-cluster correlation coefficients of 20 infections calculated from the results of cluster-sample surveys. Preventive Veterinary Medicine 31: 147 - 150.
+
+
+## EXAMPLE 2
+ A cross-sectional study is to be carried out to determine the prevalence
+ of a given disease in a population using a two-stage cluster design. We
+ estimate prevalence to be `r p` and we expect rho to be in the order of 0.02.
+ We want to take sufficient samples to be 95% certain that our estimate of
+ prevalence is within 5% of the true population value (that is, a relative
+ error of 0.05 / 0.50 = 0.1). Assuming `r b` responses from each cluster,
+ how many clusters do we need to be sample?
+
+
+```{r}
+cluster_ss_2 <- epiR::epi.clustersize(p = p, # expected prevalence
+                b = b, # participants per cluster
+                rho = 0.02, # with new_rho is crazy
+                epsilon.r = 0.1,
+                conf.level = 0.95)
+```
+Schools 2
+```{r schools 2}
+cluster_ss_2$clusters
+```
+Sample 2
+```{r sample 2}
+cluster_ss_2$units
+```
+
+**We need to sample `r cluster_ss_2$clusters` clusters (`r cluster_ss_2$units` samples in total)**
+
+Reference: 
+Bennett S, Woods T, Liyanage WM, Smith DL (1991). A simplified general method for clustersample
+surveys of health in developing countries. World Health Statistics Quarterly 44: 98 - 106.
+
+
+# Sampling procedure (if required)
+```{r, warning=FALSE}
+# library(sampling)
+```
+
+ Two-stage cluster sampling
+ Uses the 'swissmunicipalities' data 
+ the variable 'REG' (region) has 7 categories;
+ it is used as clustering variable in the first-stage sample
+ the variable 'CT' (canton) has 26 categories; 
+ it is used as clustering variable in the second-stage sample
+ 4 clusters (regions) are selected in the first-stage 
+ 1 canton is selected in the second-stage from each sampled region 
+ the method is simple random sampling without replacement in each stage
+ (equal probability, without replacement)
+
+
+
+data(swissmunicipalities)
+c = swissmunicipalities
+c = c[order(c$REG,c$CT),]
+attach(c)
+
+m = mstage(c,
+           stage = list("cluster","cluster"),
+           varnames = list("REG","CT"),
+           size = list(4,c(1,1,1,1)),
+           method = list("srswor","srswor"))
+
+ the first stage is m[[1]], the second stage is m[[2]]
+ the selected regions
+
+unique(m[[1]]$REG)
+
+the selected cantons
+
+unique(m[[2]]$CT)
+
+extracts the observed data
+
+x = getdata(c,m)[[2]]
+
+check the output
+
+table(x$REG,x$CT)
+
+# PENDIENTE
+
+Cuantas familias tienes pastas de niños?
 df %>% 
   group_by(`Children/Adult`, `Family code`) %>% 
   summarise(n = n()) %>% 
   spread(`Children/Adult`, n)
-```
 
