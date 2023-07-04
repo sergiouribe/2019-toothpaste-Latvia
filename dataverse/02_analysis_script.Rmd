@@ -1,15 +1,15 @@
 ---
-title: "2019 Toothpaste Latvia"
+title: "Toothpaste Latvia 20230208"
 output:
-  html_document:
-    toc: yes
-    df_print: paged
-  pdf_document:
-    toc: yes
   html_notebook:
     toc: yes
     toc_float: yes
     fig_caption: yes
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: yes
+    df_print: paged
   word_document:
     toc: yes
 ---
@@ -21,45 +21,89 @@ pacman::p_load(tidyverse,
                janitor,
                MatchIt,
                scales, 
-               # epiR, 
+   
                 table1, # contains the label function
                gtsummary, 
-               # tableone,
-               # survival, 
+
                ggpubr, 
                RColorBrewer, 
-               # ggmap,
-               # geojsonR,
+
+
                 leaflet,
-               # rgdal,
-              #  sf,
+
                viridis)
 ```
 
 # Dataset
-Hidden for anonimity
-```{r read csv, include=FALSE}
-df <- read_csv("df.csv") # data until march 14, 2019
-```
 
+
+```{r read csv, include=FALSE}
+df <- read_csv("01_data.csv") 
+```
 
 ```{r}
 theme_set(theme_minimal())
 ```
 
-```{r}
-# reorder the levels of f_concentration_group
 
-df <- df %>% 
-  mutate(f_concentration_group = fct_relevel(f_concentration_group, 
-                                             "Not available", 
-                                            "No fluoride", 
-                                            "<1000 ppm", 
-                                            "1000-1399 ppm", 
-                                            "1400-1500 ppm"
-                                            ))
+```{r}
+df <- janitor::clean_names(df)
 ```
 
+# Data cleaning
+```{r visdat}
+# visdat::vis_dat(df)
+```
+
+```{r}
+names(df)
+```
+
+Clean names and remove empty cols
+
+
+Age groups
+```{r create age groups}
+df <- df %>% 
+  mutate(age_group = case_when(
+    `age` < 6 ~ "0 ~ 5", 
+    `age` < 13 ~ "6 ~ 12", 
+    `age` < 19 ~ "13 ~ 18", 
+    TRUE ~ "> 18"
+  ))
+
+
+#  relevel age groups
+df$age_group <- fct_relevel(df$age_group, "0 ~ 5" , "6 ~ 12", "13 ~ 18", "> 18" )
+
+```
+
+```{r}
+janitor::tabyl(df$age_group) %>% janitor::adorn_pct_formatting() # # table age groups
+```
+
+
+IN age group change NA to adult
+
+```{r}
+df$`children_adult` <- df$`children_adult` %>% 
+  replace_na("adult")
+```
+
+## Grouping fluoride concentrations
+Create a new variable F_concentration_group
+
+```{r F groups}
+df <- df %>% 
+  mutate(`f_concentration_group` = case_when(
+    `f_concentration` < 1 ~ "No fluoride",
+    `f_concentration` < 1000 ~ "<1000 ppm",
+    `f_concentration` < 1400 ~ "1000-1399 ppm", 
+    `f_concentration` < 1501 ~ "1400-1500 ppm", 
+    TRUE ~ "NA"
+  )) %>% 
+  mutate(`f_concentration_group` = fct_relevel(f_concentration_group, "No fluoride", "<1000 ppm","1000-1399 ppm", "1400-1500 ppm" ))
+```
 
 
 # Separate datasets for each country 
@@ -67,11 +111,13 @@ df <- df %>%
 ```{r}
 df_latvia <- df %>% 
   filter(country == "Latvia")
+  
 ```
 
 ```{r}
 df_lithuania <- df %>% 
   filter(country == "Lithuania")
+  
 ```
 
 
@@ -145,49 +191,7 @@ df %>%
   select(f_concentration_group, children_adult, country) %>% 
   gtsummary::tbl_summary(by = country, missing = "no", 
                          statistic = list(all_continuous() ~ "{mean} ({sd})")) %>% 
-  gtsummary::add_overall() %>% 
-  gtsummary::add_p()
-```
-Difference by country
-```{r}
-# Perform chi-squared test
-chisq.test(df$country, df$f_concentration_group)
-```
-
-Difference by group
-```{r}
-# Perform chi-squared test
-chisq.test(df$children_adult, df$f_concentration_group)
-```
-```{r}
-mosaicplot(table(df$country, df$f_concentration_group), shade = T)
-```
-
-
-```{r}
-df_withoutNA <- df %>% 
-filter(f_concentration_group != "NA")
-```
-
-```{r}
-mosaicplot(table(df_withoutNA$country, df_withoutNA$f_concentration_group), shade = T)
-```
-
-```{r}
-
-contingency_tables_list <- table(df$f_concentration_group, df$country, df$children_adult)
-contingency_tables_list
-
-
-```
-
-```{r}
-# Perform the Mantel-Haenszel test
-mantel_haenszel_test <- mantelhaen.test(contingency_tables_list)
-
-# Print the results
-mantel_haenszel_test
-
+  gtsummary::add_overall()
 ```
 
 
@@ -620,6 +624,7 @@ df %>%
 #  select(-c(family_code, nr_of_family_members)) %>% 
 #  dataReporter::makeCodebook()
 ```
+
 
 
 

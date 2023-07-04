@@ -1,0 +1,512 @@
+summarise(n = n(),
+mean = mean(`age`),
+sd = sd(`age`),
+min = min(`age`),
+max = max(`age`)) %>%
+mutate_if(is.numeric, round, 1)
+df$f_concentration_test <- factor(df$f_concentration,
+levels = c(
+"NA",
+"No fluoride",
+"<1000 ppm",
+"551 to 999 ppm",
+"1000 and 1500 ppm"))
+df %>%
+janitor::tabyl(age_group, `f_concentration`) %>%
+knitr::kable()
+df %>%
+janitor::tabyl(`lives_in`, `f_concentration`) %>%
+janitor::adorn_totals(c("row", "col")) %>%
+janitor::adorn_percentages("row") %>%
+janitor::adorn_pct_formatting(rounding = "half up", digits = 0) %>%
+janitor::adorn_ns() %>%
+janitor::adorn_title("combined") %>%
+knitr::kable()
+df %>%
+janitor::tabyl(age_group, `f_concentration`) %>%
+janitor::adorn_totals(c("row", "col")) %>%
+janitor::adorn_percentages("row") %>%
+janitor::adorn_pct_formatting(rounding = "half up", digits = 0) %>%
+janitor::adorn_ns() %>%
+janitor::adorn_title("combined") %>%
+knitr::kable() %>% kableExtra::kable_styling(bootstrap_options = c("striped", "hover"))
+df %>%
+filter(`f_concentration` == "0 - No fluoride") %>%
+na.omit() %>%    # Using "data", filter out all rows with NAs in aa
+group_by(`toothpaste`) %>%          # Then, with the filtered data, group it by "bb"
+summarise(Unique_Elements = n_distinct(`toothpaste`))  %>%   # Now summarise with unique elements per group
+knitr::kable()
+df %>%
+mutate(toothpaste2 = fct_lump_prop(toothpaste, prop = .02)) %>%
+group_by(toothpaste2, country) %>%
+count() %>%
+pivot_wider(names_from = country,
+values_from = n) %>%
+arrange(desc(Lithuania)) %>%
+arrange(desc(Latvia))
+df %>%
+group_by(toothpaste, country) %>%
+summarise(count = n())
+df %>%
+filter(!`f_concentration` == "0 - No fluoride") %>%
+#na.omit() %>%    # Using "data", filter out all rows with NAs in aa
+group_by(`toothpaste`) %>%          # Then, with the filtered data, group it by "bb"
+summarise(Unique_Elements = n_distinct(`toothpaste`))  %>%   # Now summarise with unique elements per group
+knitr::kable()
+df %>%
+filter(f_concentration_group != "NA") %>%
+ggplot(aes(x = `f_concentration_group`, y = `age`)) +
+geom_jitter(alpha = .05) +
+geom_boxplot(alpha = .8) +
+coord_flip() +
+theme_minimal() +
+labs(title = "Age distribution per toothpaste F concentration type",
+x = "Fluoride concentration",
+y = "Age (years)")
+df %>%
+filter(f_concentration_group != "NA") %>%
+group_by(age_group, f_concentration_group) %>%
+summarise(count = n()) %>%
+mutate(perc = count / sum(count)) %>%
+ggplot(aes(x = age_group, y = perc * 100, fill = f_concentration_group)) +
+geom_bar(stat = "identity") +
+facet_grid(f_concentration_group ~ .) +
+theme_minimal() +
+labs(title = "Fluoride Concentration toothpaste by age group",
+y = "Percentage",
+x = "Age group",
+fill = "Fluoride concentration") +
+scale_fill_brewer(palette = "Spectral")
+df %>%
+filter(f_concentration_group != "NA") %>%
+group_by(age_group, f_concentration_group) %>%
+summarise(count = n()) %>%
+mutate(perc=count/sum(count)) %>%
+ggplot(aes(x = age_group, y = perc*100, fill = f_concentration_group)) +
+geom_bar(stat="identity") +
+facet_wrap(~f_concentration_group) +
+theme_minimal() +
+labs(title = "Fluoride Concentration toothpaste by age group",
+y = "Percentage",
+x = "Age group",
+fill = "Fluoride concentration") +
+coord_flip() +
+scale_fill_brewer(palette = "Spectral")
+df %>%
+filter(f_concentration_group != "NA") %>%
+group_by(lives_in, f_concentration_group) %>%
+summarise(count = n()) %>%
+mutate(perc = count / sum(count)) %>%
+ggplot(aes(x = lives_in, y = perc * 100, fill = f_concentration_group)) +
+geom_bar(stat = "identity") +
+facet_wrap( ~ f_concentration_group) +
+theme_minimal() +
+labs(title = "Fluoride Concentration toothpaste by location",
+y = "Percentage",
+x = "Location",
+fill = "Fluoride concentration") +
+coord_flip() +
+scale_fill_brewer(palette = "Spectral")
+# df %>%
+#  select(-c(family_code, nr_of_family_members)) %>%
+#  dataReporter::makeCodebook()
+df <- df %>%
+mutate(`f_concentration_group` = case_when(
+`f_concentration` < 1 ~ "No fluoride",
+`f_concentration` < 1000 ~ "< 1000 ppm",
+`f_concentration` < 1400 ~ "1000-1399 ppm",
+`f_concentration` < 1501 ~ "1400-1500 ppm",
+TRUE ~ "NA"
+)) %>%
+mutate(`f_concentration_group` = fct_relevel(f_concentration_group, "No fluoride", "<1000 ppm","1000-1399 ppm", "1400-1500 ppm" ))
+# df <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vS_CyX5w7gOyekyzKDiwO2LQ9h5q9r5CLgNISIFXfED3X7IXNAEES5Kg_4vCyK_Q10UDCt_RZtLYyO7/pub?output=csv")
+df <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vQjKbo5dDRNf99uSmkRz3nP4eys27_ygQK7OB1e-kGUGF8spMq6YKLlvbt28KSCTbkoHAEvMADFhmfF/pub?gid=0&single=true&output=csv") # data until march 14, 2019
+df <- df %>%
+mutate(age_group = case_when(
+`age` < 6 ~ "0 ~ 5",
+`age` < 13 ~ "6 ~ 12",
+`age` < 19 ~ "13 ~ 18",
+TRUE ~ "> 18"
+))
+#  relevel age groups
+df$age_group <- fct_relevel(df$age_group, "0 ~ 5" , "6 ~ 12", "13 ~ 18", "> 18" )
+df$`children_adult` <- df$`children_adult` %>%
+replace_na("adult")
+df %>%
+mutate(`f_concentration_group` = case_when(
+`f_concentration` < 1 ~ "No fluoride",
+`f_concentration` < 1000 ~ "<1000 ppm",
+`f_concentration` < 1400 ~ "1000-1399 ppm",
+`f_concentration` < 1501 ~ "1400-1500 ppm",
+TRUE ~ "NA"
+))
+df %>%
+mutate(`f_concentration_group` = case_when(
+`f_concentration` < 1 ~ "No fluoride",
+`f_concentration` < 1000 ~ "<1000 ppm",
+`f_concentration` < 1400 ~ "1000-1399 ppm",
+`f_concentration` < 1501 ~ "1400-1500 ppm",
+TRUE ~ "NA"
+)) %>%
+mutate(`f_concentration_group` = fct_relevel(f_concentration_group, "No fluoride", "<1000 ppm","1000-1399 ppm", "1400-1500 ppm" ))
+df <- df %>%
+mutate(`f_concentration_group` = case_when(
+`f_concentration` < 1 ~ "No fluoride",
+`f_concentration` < 1000 ~ "<1000 ppm",
+`f_concentration` < 1400 ~ "1000-1399 ppm",
+`f_concentration` < 1501 ~ "1400-1500 ppm",
+TRUE ~ "NA"
+)) %>%
+mutate(`f_concentration_group` = fct_relevel(f_concentration_group, "No fluoride", "<1000 ppm","1000-1399 ppm", "1400-1500 ppm" ))
+df <- df %>%
+mutate(`f_concentration_group` = case_when(
+`f_concentration` < 1 ~ "No fluoride",
+`f_concentration` < 1000 ~ "<1000 ppm",
+`f_concentration` < 1400 ~ "1000-1399 ppm",
+`f_concentration` < 1501 ~ "1400-1500 ppm",
+TRUE ~ "NA"
+)) %>%
+mutate(`f_concentration_group` = fct_relevel(f_concentration_group, "No fluoride", "<1000 ppm","1000-1399 ppm", "1400-1500 ppm"))
+df %>%
+mutate(`f_concentration_group` = case_when(
+`f_concentration` < 1 ~ "No fluoride",
+`f_concentration` < 1000 ~ "<1000 ppm",
+`f_concentration` < 1400 ~ "1000-1399 ppm",
+`f_concentration` < 1501 ~ "1400-1500 ppm",
+TRUE ~ "NA"
+))
+df %>%
+mutate(`f_concentration_group` = case_when(
+`f_concentration` < 1 ~ "No fluoride",
+`f_concentration` < 1000 ~ "<1000 ppm",
+`f_concentration` < 1400 ~ "1000-1399 ppm",
+`f_concentration` < 1501 ~ "1400-1500 ppm"))
+df <- df %>%
+mutate(`f_concentration_group` = case_when(
+`f_concentration` < 1 ~ "No fluoride",
+`f_concentration` < 1000 ~ "<1000 ppm",
+`f_concentration` < 1400 ~ "1000-1399 ppm",
+`f_concentration` < 1501 ~ "1400-1500 ppm"
+))
+pacman::p_load(tidyverse,
+kableExtra,
+here,
+janitor,
+MatchIt,
+scales,
+# epiR,
+table1, # contains the label function
+gtsummary,
+# tableone,
+# survival,
+ggpubr,
+RColorBrewer,
+# ggmap,
+# geojsonR,
+leaflet,
+# rgdal,
+#  sf,
+viridis)
+# df <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vS_CyX5w7gOyekyzKDiwO2LQ9h5q9r5CLgNISIFXfED3X7IXNAEES5Kg_4vCyK_Q10UDCt_RZtLYyO7/pub?output=csv")
+df <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vQjKbo5dDRNf99uSmkRz3nP4eys27_ygQK7OB1e-kGUGF8spMq6YKLlvbt28KSCTbkoHAEvMADFhmfF/pub?gid=0&single=true&output=csv") # data until march 14, 2019
+theme_set(theme_minimal())
+df <- janitor::clean_names(df)
+# visdat::vis_dat(df)
+names(df)
+df <- df %>%
+mutate(age_group = case_when(
+`age` < 6 ~ "0 ~ 5",
+`age` < 13 ~ "6 ~ 12",
+`age` < 19 ~ "13 ~ 18",
+TRUE ~ "> 18"
+))
+#  relevel age groups
+df$age_group <- fct_relevel(df$age_group, "0 ~ 5" , "6 ~ 12", "13 ~ 18", "> 18" )
+janitor::tabyl(df$age_group) %>% janitor::adorn_pct_formatting() # # table age groups
+df$`children_adult` <- df$`children_adult` %>%
+replace_na("adult")
+df <- df %>%
+mutate(`f_concentration_group` = case_when(
+`f_concentration` < 1 ~ "No fluoride",
+`f_concentration` < 1000 ~ "<1000 ppm",
+`f_concentration` < 1400 ~ "1000-1399 ppm",
+`f_concentration` < 1501 ~ "1400-1500 ppm"
+)) %>%
+mutate(`f_concentration_group` = fct_relevel(f_concentration_group, "No fluoride", "<1000 ppm","1000-1399 ppm", "1400-1500 ppm"))
+df_latvia <- df %>%
+filter(country == "Latvia")
+df_lithuania <- df %>%
+filter(country == "Lithuania")
+names(df)
+summary(df)
+summary(df_latvia)
+summary(df_lithuania)
+df$`f_concentration` <- as.integer(df$`f_concentration`)
+df %>%
+ggplot(aes(x = `f_concentration`)) +
+geom_histogram(bins = 5)
+# df$`f_concentration_2` <- as.integer(df$`f_concentration_for_the_second_paste`)
+# df %>%
+#  ggplot(aes(x = `f_concentration_for_the_second_paste`)) +
+#  geom_histogram(bins = 5)
+df$children_adult <-
+factor(df$children_adult,
+labels = c("Adult toothpaste",
+"Child toothpaste"))
+label(df$age) <- "Age"
+label(df$age_group) <- "Age groups"
+label(df$lives_in) <- "Lives In"
+label(df$lives_in_specific) <- "Region"
+label(df$f_concentration_group) <- "F concentration in toothpaste"
+label(df$nr_of_family_members) <- "Number of family members"
+df %>%
+select(age, age_group, lives_in, country) %>%
+gtsummary::tbl_summary(by = country, missing = "no",
+statistic = list(all_continuous() ~ "{mean} ({sd})")) %>%
+gtsummary::add_overall()
+df %>%
+select(f_concentration_group, children_adult, country) %>%
+gtsummary::tbl_summary(by = country, missing = "no",
+statistic = list(all_continuous() ~ "{mean} ({sd})")) %>%
+gtsummary::add_overall()
+df %>%
+select(lives_in, f_concentration_group) %>%
+gtsummary::tbl_summary(by = lives_in, missing = "no") %>%
+gtsummary::add_overall()
+df %>%
+filter(country == "Latvia") %>%
+select(f_concentration_group, age_group) %>%
+gtsummary::tbl_summary(by = age_group, missing = "no") %>%
+gtsummary::add_overall()
+df %>%
+filter(country == "Latvia") %>%
+select(lives_in, f_concentration_group) %>%
+gtsummary::tbl_summary(by = lives_in, missing = "no") %>%
+gtsummary::add_overall()
+df %>%
+filter(country == "Lithuania") %>%
+select(f_concentration_group, age_group) %>%
+gtsummary::tbl_summary(by = age_group, missing = "no") %>%
+gtsummary::add_overall()
+df %>%
+filter(country == "Lithuania") %>%
+select(lives_in, f_concentration_group) %>%
+gtsummary::tbl_summary(by = lives_in, missing = "no") %>%
+gtsummary::add_overall()
+my_palette <- brewer.pal(name="Spectral", n = 7)[0:9]
+df %>%
+select(age_group, country, f_concentration_group) %>%
+filter(f_concentration_group != "NA") %>%
+# calculate the percentages
+group_by(country, f_concentration_group, age_group) %>%
+count() %>%
+# pivot_wider(names_from = f_concentration_group,
+#            values_from = n)
+group_by(country) %>%
+mutate(perc = n / sum(n) * 100) %>%
+mutate(perc = round(perc, 1)) %>%
+# select(-n) %>%
+# pivot_wider(names_from = f_concentration_group,
+#           values_from = perc)
+# make the plot
+ggplot(aes(x = age_group,
+y = perc,
+label = perc,
+fill = f_concentration_group)) +
+geom_col(position="fill") +
+scale_fill_brewer(palette = "Spectral") +
+labs(title = "Use of F Toothpaste by Age",
+fill = "Concentration",
+x = "Age group",
+y = "",
+caption = "Numbers on bars corresponds to the number of persons. Latvia N = 2 270, Lithuania = 2 815."
+) +
+#geom_text(
+# aes(label = n),
+#size = 2.5,
+#position = position_fill(0.5)
+# ) +
+scale_y_continuous(labels = label_percent()) +
+# divide by country
+facet_grid( country ~ .)
+ggsave(
+here("figures", "figure_age.pdf"),
+width = 20, height = 20, units = "cm",
+# res = 300,
+device='pdf'
+)
+table(df$age_group, df$f_concentration_group)
+chisq.test(table(df$age_group, df$f_concentration_group))
+mosaicplot(table(df$f_concentration_group, df$age_group), shade = T)
+table(df_latvia$age_group, df_latvia$f_concentration_group)
+chisq.test(table(df_latvia$age_group, df_latvia$f_concentration_group))
+mosaicplot(table(df_latvia$f_concentration_group, df_latvia$age_group), shade = T)
+table(df_lithuania$age_group, df_lithuania$f_concentration_group)
+chisq.test(table(df_lithuania$age_group, df_lithuania$f_concentration_group))
+mosaicplot(table(df_lithuania$f_concentration_group, df_lithuania$age_group), shade = T)
+df %>%
+select(lives_in, country, f_concentration_group) %>%
+filter(f_concentration_group != "NA")%>%
+# calculate the percentages
+group_by(country, f_concentration_group, lives_in) %>%
+count() %>%
+group_by(country) %>%
+mutate(perc = n / sum(n) * 100) %>%
+mutate(perc = round(perc, 1)) %>%
+# make the plot
+# make the plot
+ggplot(aes(x = lives_in,
+y = perc,
+label = perc,
+fill = f_concentration_group)) +
+geom_col(position="fill") +
+scale_fill_brewer(palette = "Spectral") +
+labs(title = "Use of F Toothpaste by Area",
+fill = "Concentration",
+x = "Area",
+y = "",
+caption = " Numbers on bars corresponds to the number of persons. Latvia N = 2 270, Lithuania = 2 815."
+) +
+#  geom_text(
+#    aes(label = perc),
+#    size = 2.5,
+#    position = position_fill(0.5)
+#  ) +
+scale_y_continuous(labels = label_percent()) +
+# divide by country
+facet_grid( country ~ .)
+ggsave(
+here("figures", "figure_area.pdf"),
+width = 20, height = 20, units = "cm",
+# res = 300,
+device='pdf'
+)
+table(df$lives_in, df$f_concentration_group)
+chisq.test(table(df$lives_in, df$f_concentration_group))
+mosaicplot(table(df$f_concentration_group, df$lives_in), shade = T)
+table(df_latvia$lives_in, df_latvia$f_concentration_group)
+chisq.test(table(df_latvia$lives_in, df_latvia$f_concentration_group))
+mosaicplot(table(df_latvia$f_concentration_group, df_latvia$lives_in), shade = T)
+table(df_lithuania$lives_in, df_lithuania$f_concentration_group)
+chisq.test(table(df_lithuania$lives_in, df_lithuania$f_concentration_group))
+mosaicplot(table(df_lithuania$f_concentration_group, df_lithuania$lives_in), shade = T)
+janitor::tabyl(df$f_concentration) %>%
+adorn_pct_formatting()
+df %>%
+ggplot(aes(x = f_concentration)) +
+geom_histogram(bins = 10)
+df %>%
+group_by(`f_concentration_group`) %>%
+summarise(n = n(),
+mean = mean(`age`),
+sd = sd(`age`),
+min = min(`age`),
+max = max(`age`)) %>%
+mutate_if(is.numeric, round, 1)
+df$f_concentration_test <- factor(df$f_concentration,
+levels = c(
+"NA",
+"No fluoride",
+"<1000 ppm",
+"551 to 999 ppm",
+"1000 and 1500 ppm"))
+df %>%
+janitor::tabyl(age_group, `f_concentration`) %>%
+knitr::kable()
+df %>%
+janitor::tabyl(`lives_in`, `f_concentration`) %>%
+janitor::adorn_totals(c("row", "col")) %>%
+janitor::adorn_percentages("row") %>%
+janitor::adorn_pct_formatting(rounding = "half up", digits = 0) %>%
+janitor::adorn_ns() %>%
+janitor::adorn_title("combined") %>%
+knitr::kable()
+df %>%
+janitor::tabyl(age_group, `f_concentration`) %>%
+janitor::adorn_totals(c("row", "col")) %>%
+janitor::adorn_percentages("row") %>%
+janitor::adorn_pct_formatting(rounding = "half up", digits = 0) %>%
+janitor::adorn_ns() %>%
+janitor::adorn_title("combined") %>%
+knitr::kable() %>% kableExtra::kable_styling(bootstrap_options = c("striped", "hover"))
+df %>%
+filter(`f_concentration` == "0 - No fluoride") %>%
+na.omit() %>%    # Using "data", filter out all rows with NAs in aa
+group_by(`toothpaste`) %>%          # Then, with the filtered data, group it by "bb"
+summarise(Unique_Elements = n_distinct(`toothpaste`))  %>%   # Now summarise with unique elements per group
+knitr::kable()
+df %>%
+mutate(toothpaste2 = fct_lump_prop(toothpaste, prop = .02)) %>%
+group_by(toothpaste2, country) %>%
+count() %>%
+pivot_wider(names_from = country,
+values_from = n) %>%
+arrange(desc(Lithuania)) %>%
+arrange(desc(Latvia))
+df %>%
+group_by(toothpaste, country) %>%
+summarise(count = n())
+df %>%
+filter(!`f_concentration` == "0 - No fluoride") %>%
+#na.omit() %>%    # Using "data", filter out all rows with NAs in aa
+group_by(`toothpaste`) %>%          # Then, with the filtered data, group it by "bb"
+summarise(Unique_Elements = n_distinct(`toothpaste`))  %>%   # Now summarise with unique elements per group
+knitr::kable()
+df %>%
+filter(f_concentration_group != "NA") %>%
+ggplot(aes(x = `f_concentration_group`, y = `age`)) +
+geom_jitter(alpha = .05) +
+geom_boxplot(alpha = .8) +
+coord_flip() +
+theme_minimal() +
+labs(title = "Age distribution per toothpaste F concentration type",
+x = "Fluoride concentration",
+y = "Age (years)")
+df %>%
+filter(f_concentration_group != "NA") %>%
+group_by(age_group, f_concentration_group) %>%
+summarise(count = n()) %>%
+mutate(perc = count / sum(count)) %>%
+ggplot(aes(x = age_group, y = perc * 100, fill = f_concentration_group)) +
+geom_bar(stat = "identity") +
+facet_grid(f_concentration_group ~ .) +
+theme_minimal() +
+labs(title = "Fluoride Concentration toothpaste by age group",
+y = "Percentage",
+x = "Age group",
+fill = "Fluoride concentration") +
+scale_fill_brewer(palette = "Spectral")
+df %>%
+filter(f_concentration_group != "NA") %>%
+group_by(age_group, f_concentration_group) %>%
+summarise(count = n()) %>%
+mutate(perc=count/sum(count)) %>%
+ggplot(aes(x = age_group, y = perc*100, fill = f_concentration_group)) +
+geom_bar(stat="identity") +
+facet_wrap(~f_concentration_group) +
+theme_minimal() +
+labs(title = "Fluoride Concentration toothpaste by age group",
+y = "Percentage",
+x = "Age group",
+fill = "Fluoride concentration") +
+coord_flip() +
+scale_fill_brewer(palette = "Spectral")
+df %>%
+filter(f_concentration_group != "NA") %>%
+group_by(lives_in, f_concentration_group) %>%
+summarise(count = n()) %>%
+mutate(perc = count / sum(count)) %>%
+ggplot(aes(x = lives_in, y = perc * 100, fill = f_concentration_group)) +
+geom_bar(stat = "identity") +
+facet_wrap( ~ f_concentration_group) +
+theme_minimal() +
+labs(title = "Fluoride Concentration toothpaste by location",
+y = "Percentage",
+x = "Location",
+fill = "Fluoride concentration") +
+coord_flip() +
+scale_fill_brewer(palette = "Spectral")
+# df %>%
+#  select(-c(family_code, nr_of_family_members)) %>%
+#  dataReporter::makeCodebook()
+View(df)

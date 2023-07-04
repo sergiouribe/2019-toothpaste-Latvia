@@ -1,0 +1,225 @@
+---
+title: "Data preparation and cleaning"
+output: html_notebook
+---
+# Packages
+```{r}
+pacman::p_load(tidyverse,
+               kableExtra, 
+               here, 
+               janitor,
+               MatchIt,
+               scales, 
+               # epiR, 
+                table1, # contains the label function
+               gtsummary, 
+               # tableone,
+               # survival, 
+               ggpubr, 
+               RColorBrewer, 
+               # ggmap,
+               # geojsonR,
+                leaflet,
+               # rgdal,
+              #  sf,
+               viridis)
+```
+
+# Dataset
+Hidden for anonimity
+```{r read csv, include=FALSE}
+df <- read_csv("Dati_toothpaste_latvia_lithuania.csv") # data until march 14, 2019
+```
+
+
+```{r}
+theme_set(theme_minimal())
+```
+
+
+```{r}
+df <- janitor::clean_names(df)
+```
+
+# Data cleaning
+```{r visdat}
+# visdat::vis_dat(df)
+```
+
+```{r}
+names(df)
+```
+
+Clean names and remove empty cols
+
+
+Age groups
+```{r create age groups}
+df <- df %>% 
+  mutate(age_group = case_when(
+    `age` < 6 ~ "0 ~ 5", 
+    `age` < 13 ~ "6 ~ 12", 
+    `age` < 19 ~ "13 ~ 18", 
+    TRUE ~ "> 18"
+  ))
+
+
+#  relevel age groups
+df$age_group <- fct_relevel(df$age_group, "0 ~ 5" , "6 ~ 12", "13 ~ 18", "> 18" )
+
+```
+
+```{r}
+janitor::tabyl(df$age_group) %>% janitor::adorn_pct_formatting() # # table age groups
+```
+
+
+IN age group change NA to adult
+
+```{r}
+df$`children_adult` <- df$`children_adult` %>% 
+  replace_na("adult")
+```
+
+## Grouping fluoride concentrations
+Create a new variable F_concentration_group
+
+First, convert the Not known in some nomber to recod afterwards
+
+```{r}
+df <- df %>% 
+  mutate(f_concentration = fct_recode(f_concentration, "99999" = "Not known")) 
+```
+
+
+```{r F groups}
+df <- df %>%
+  # some pre processing
+  mutate(f_concentration = as.character(f_concentration)) %>%  # was a factor, so first convert to character
+  mutate(f_concentration = as.integer(f_concentration)) %>% # f_concentration was stored as character and not as integer!
+  
+  # create the new categories
+  mutate(
+    `f_concentration_group` = case_when(
+      `f_concentration` == 99999 ~ "Not known",
+      `f_concentration` < 1 ~ "No fluoride",
+      `f_concentration` < 1000 ~ "<1000 ppm",
+      `f_concentration` < 1400 ~ "1000-1399 ppm",
+      `f_concentration` < 1501 ~ "1400-1500 ppm",
+      TRUE ~ "NA"
+    )
+  ) %>%
+  # check the table
+  # tabyl(f_concentration_group)
+  
+  # now reorder
+  mutate(
+    `f_concentration_group` = fct_relevel(
+      f_concentration_group,
+      "Not known",
+      "No fluoride",
+      "<1000 ppm",
+      "1000-1399 ppm",
+      "1400-1500 ppm"
+    )
+  ) 
+```
+
+```{r}
+# check
+df %>% 
+  tabyl(f_concentration_group, country)
+```
+
+ok, first change the NA to other values, as Not Available
+
+```{r}
+
+df <- df %>% 
+  mutate(f_concentration_group = fct_recode(f_concentration_group, "Not available" = "NA")) 
+
+```
+
+
+
+## Data imputation
+
+```{r}
+pacman::p_load(mice, # the package for imputation
+               naniar) # to visualize the NAs
+```
+
+
+```{r}
+df <- replace_with_na_at(data = df,
+                         .vars = "f_concentration_group",
+                         condition = ~.x == "Not known") %>% 
+  droplevels()
+```
+
+
+```{r}
+df %>% 
+  tabyl(f_concentration_group, country)
+```
+
+check the missing pattern
+```{r}
+df %>% 
+  select(country, f_concentration_group) %>% 
+  md.pattern()
+```
+```{r}
+df %>% 
+  select(country, f_concentration_group) %>% 
+  gg_miss_var(country) 
+```
+
+
+
+```{r}
+# Store a copy of the previous dataset
+# df_non_imputed <- df
+```
+
+```{r}
+df %>% 
+  tabyl(f_concentration_group, country) %>% 
+  adorn_percentages("col") %>%
+  adorn_pct_formatting(digits = 2) %>%
+  adorn_ns()
+```
+
+```{r}
+# Define the levels
+levels <- c("<1000 ppm", "1000-1399 ppm", "1400-1500 ppm", "No fluoride", "Not available")
+num_na <- c(28, 36, 146, 39, 6)
+
+# Create the seq
+seq <- rep(levels, num_na)
+
+# Order the DF
+df <- df[order(is.na(df$f_concentration_group)), ]
+
+# Assign the values
+df$f_concentration_group[is.na(df$f_concentration_group)] <- seq
+```
+
+
+check
+
+```{r}
+df %>% 
+  tabyl(f_concentration_group, country)
+```
+
+
+
+```{r}
+write_csv(df, "df.csv")
+```
+
+```{r}
+rm(df)
+```
+

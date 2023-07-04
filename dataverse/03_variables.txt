@@ -1,0 +1,11 @@
+Variable	Description
+country	country - Latvia/Lithuania
+count	study unit - member of household
+family_code	a code for each family (refers to one questionnaire)
+nr_of_family_members	total number of people in the household
+lives_in_specific	residency (city or region)
+lives_in	type of living place - city/town/rural
+age	age of the member of the household
+toothpaste	toothpaste brand name
+toothpaste_full_name	specific title of the toothpaste
+f_concentration	fluoride concentration in the toothpaste
