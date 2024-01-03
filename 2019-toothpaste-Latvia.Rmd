@@ -1,19 +1,21 @@
 ---
 title: "2019 Toothpaste Latvia"
-output:
-  html_document:
-    toc: yes
-    df_print: paged
-  pdf_document:
-    toc: yes
-  html_notebook:
-    toc: yes
-    toc_float: yes
-    fig_caption: yes
-  word_document:
-    toc: yes
+date-modified: last-modified
+format:
+  html:
+    toc: true
+toc-expand: 3
+code-fold: true
+code-tools: true
+editor: visual
+execute:
+  echo: false
+  warning: false
+  message: false
 ---
+
 # Packages
+
 ```{r}
 pacman::p_load(tidyverse,
                kableExtra, 
@@ -28,6 +30,7 @@ pacman::p_load(tidyverse,
                # survival, 
                ggpubr, 
                RColorBrewer, 
+               patchwork, # to combine plots
                # ggmap,
                # geojsonR,
                 leaflet,
@@ -37,11 +40,12 @@ pacman::p_load(tidyverse,
 ```
 
 # Dataset
+
 Hidden for anonimity
+
 ```{r read csv, include=FALSE}
 df <- read_csv("df.csv") # data until march 14, 2019
 ```
-
 
 ```{r}
 theme_set(theme_minimal())
@@ -50,7 +54,7 @@ theme_set(theme_minimal())
 ```{r}
 # reorder the levels of f_concentration_group
 
-df <- df %>% 
+df <- df |> 
   mutate(f_concentration_group = fct_relevel(f_concentration_group, 
                                              "Not available", 
                                             "No fluoride", 
@@ -60,60 +64,68 @@ df <- df %>%
                                             ))
 ```
 
-
-
-# Separate datasets for each country 
+# Separate datasets for each country
 
 ```{r}
-df_latvia <- df %>% 
+df_latvia <- df |> 
   filter(country == "Latvia")
 ```
 
 ```{r}
-df_lithuania <- df %>% 
+df_lithuania <- df |> 
   filter(country == "Lithuania")
 ```
 
-
 # EDA
+
 ```{r check names}
-names(df)
-```
-```{r summary df}
-summary(df)
-```
-```{r summary LV}
-summary(df_latvia)
-```
-```{r summary LT}
-summary(df_lithuania)
+# names(df)
 ```
 
+```{r summary df}
+summary(df) |> 
+  kable() |> 
+  kable_classic(full_width = F)
+```
+
+```{r summary LV}
+summary(df_latvia) |> 
+  kable() |> 
+  kable_classic(full_width = F)
+```
+
+```{r summary LT}
+summary(df_lithuania)|> 
+  kable() |> 
+  kable_classic(full_width = F)
+```
 
 Convert F to number
+
 ```{r Convert F to number}
 df$`f_concentration` <- as.integer(df$`f_concentration`)
 ```
 
 ```{r Check distribution of F in toothpaste}
-df %>% 
-  ggplot(aes(x = `f_concentration`)) + 
-  geom_histogram(bins = 5)
+# df |> 
+#   ggplot(aes(x = `f_concentration`)) + 
+#   geom_histogram(bins = 5)
 ```
 
 Convert F2 to number
+
 ```{r Convert F2 to number}
 # df$`f_concentration_2` <- as.integer(df$`f_concentration_for_the_second_paste`)
 ```
 
 ```{r Check distribution of F2 in toothpaste}
-# df %>% 
+# df |> 
 #  ggplot(aes(x = `f_concentration_for_the_second_paste`)) + 
 #  geom_histogram(bins = 5)
 ```
 
+# Table 1
 
-#Table 1
 ```{r}
 df$children_adult <-
   factor(df$children_adult,
@@ -127,46 +139,60 @@ label(df$lives_in_specific) <- "Region"
 label(df$f_concentration_group) <- "F concentration in toothpaste"
 label(df$nr_of_family_members) <- "Number of family members"
 
+
+
+
 ```
 
+Relevel age groups
 
 ```{r}
-df %>% 
-  select(age, age_group, lives_in, country) %>% 
+df <- df |> 
+  mutate(age_group = fct_relevel(age_group, 
+                                 "0 ~ 5", "6 ~ 12", "13 ~ 18", "> 18"
+                                 ))
+```
+
+```{r}
+df |> 
+  select(age, age_group, lives_in, country) |> 
   gtsummary::tbl_summary(by = country, missing = "no", 
-                         statistic = list(all_continuous() ~ "{mean} ({sd})")) %>% 
+                         statistic = list(all_continuous() ~ "{mean} ({sd})")) |> 
   gtsummary::add_overall()
 ```
 
 # Table of main results
 
 ```{r}
-df %>% 
-  select(f_concentration_group, children_adult, country) %>% 
+df |> 
+  select(f_concentration_group, children_adult, country) |> 
   gtsummary::tbl_summary(by = country, missing = "no", 
-                         statistic = list(all_continuous() ~ "{mean} ({sd})")) %>% 
-  gtsummary::add_overall() %>% 
+                         statistic = list(all_continuous() ~ "{mean} ({sd})")) |> 
+  gtsummary::add_overall() |> 
   gtsummary::add_p()
 ```
+
 Difference by country
+
 ```{r}
 # Perform chi-squared test
-chisq.test(df$country, df$f_concentration_group)
+chisq.test(df$country, df$f_concentration_group) 
 ```
 
 Difference by group
+
 ```{r}
 # Perform chi-squared test
 chisq.test(df$children_adult, df$f_concentration_group)
 ```
+
 ```{r}
 mosaicplot(table(df$country, df$f_concentration_group), shade = T)
 ```
 
-
 ```{r}
-df_withoutNA <- df %>% 
-filter(f_concentration_group != "NA")
+df_withoutNA <- df |>
+  filter(f_concentration_group != "NA")
 ```
 
 ```{r}
@@ -176,7 +202,7 @@ mosaicplot(table(df_withoutNA$country, df_withoutNA$f_concentration_group), shad
 ```{r}
 
 contingency_tables_list <- table(df$f_concentration_group, df$country, df$children_adult)
-contingency_tables_list
+contingency_tables_list 
 
 
 ```
@@ -190,100 +216,153 @@ mantel_haenszel_test
 
 ```
 
+```{r}
+rm(contingency_tables_list, mantel_haenszel_test, df_withoutNA)
+```
 
 ```{r Table 1_1}
-df %>% 
-  select(lives_in, f_concentration_group) %>% 
-  gtsummary::tbl_summary(by = lives_in, missing = "no") %>% 
+df |> 
+  select(lives_in, f_concentration_group) |> 
+  gtsummary::tbl_summary(by = lives_in, missing = "no") |> 
   gtsummary::add_overall()
 ```
 
 ## Table of main results for Latvia
+
 ```{r Table 1_2}
-df %>% 
-  filter(country == "Latvia") %>% 
-  select(f_concentration_group, age_group) %>% 
-  gtsummary::tbl_summary(by = age_group, missing = "no") %>% 
+df |> 
+  filter(country == "Latvia") |> 
+  select(f_concentration_group, age_group) |> 
+  gtsummary::tbl_summary(by = age_group, missing = "no") |> 
   gtsummary::add_overall()
 ```
 
-
 ```{r Table 1_3}
-df %>% 
-  filter(country == "Latvia") %>% 
-  select(lives_in, f_concentration_group) %>% 
-  gtsummary::tbl_summary(by = lives_in, missing = "no") %>% 
+df |> 
+  filter(country == "Latvia") |> 
+  select(lives_in, f_concentration_group) |> 
+  gtsummary::tbl_summary(by = lives_in, missing = "no") |> 
   gtsummary::add_overall()
 ```
 
 ## Table of main results for Lithuania
 
 ```{r}
-df %>% 
-  filter(country == "Lithuania") %>% 
-  select(f_concentration_group, age_group) %>% 
-  gtsummary::tbl_summary(by = age_group, missing = "no") %>% 
+df |> 
+  filter(country == "Lithuania") |> 
+  select(f_concentration_group, age_group) |> 
+  gtsummary::tbl_summary(by = age_group, missing = "no") |> 
   gtsummary::add_overall()
 ```
 
 ```{r Table 1}
-df %>% 
-  filter(country == "Lithuania") %>% 
-  select(lives_in, f_concentration_group) %>% 
-  gtsummary::tbl_summary(by = lives_in, missing = "no") %>% 
+df |> 
+  filter(country == "Lithuania") |> 
+  select(lives_in, f_concentration_group) |> 
+  gtsummary::tbl_summary(by = lives_in, missing = "no") |> 
   gtsummary::add_overall()
 ```
 
-
 # Graph F concentration by age groups
-Sergio, por favor, agrega valores en grafico
+
+## Figure 2 final
 
 ```{r}
 my_palette <- brewer.pal(name="Spectral", n = 7)[0:9]
 ```
 
-
 ```{r}
-df %>% 
-  select(age_group, country, f_concentration_group) %>% 
-  filter(f_concentration_group != "NA") %>% 
+latvia_age_plot <- df |>
+  select(age_group, country, f_concentration_group) |>
+  filter(f_concentration_group != "NA") |>
+  filter(country == "Latvia") |> 
+  # calculate the counts
+  group_by(country, f_concentration_group, age_group) |>
+  count() |>
+  
+  # calculate the total counts for each age_group
+  group_by(country, age_group) |>
+  mutate(total_count = sum(n)) |>
   
   # calculate the percentages
-  group_by(country, f_concentration_group, age_group) %>% 
-  count() %>% 
-  # pivot_wider(names_from = f_concentration_group,
-  #            values_from = n)
-
-  group_by(country) %>% 
-  mutate(perc = n / sum(n) * 100) %>% 
-  mutate(perc = round(perc, 1)) %>% 
-  # select(-n) %>% 
-  # pivot_wider(names_from = f_concentration_group,
-   #           values_from = perc)
+  ungroup() |>
+  mutate(percentage = (n / total_count) * 100) |> 
   
- 
-   # make the plot
-   ggplot(aes(x = age_group, 
-             y = perc, 
-             label = perc, 
-             fill = f_concentration_group)) +
-  geom_col(position="fill") +
-  
+  # select the columns you want to keep
+  select(country, f_concentration_group, age_group, n, percentage) |>
+  # pivot wider
+  select(f_concentration_group, age_group, percentage) |>
+  # the plot
+  ggplot(aes(
+    x = age_group,
+    label = percentage,
+    y = percentage,
+    fill = f_concentration_group
+  )) +
+  geom_col() +
+  # adjust the scale
+  scale_y_continuous(labels = label_percent(scale = 1)) +
+  # change the colors
   scale_fill_brewer(palette = "Spectral") +
+  # the labels
+geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            position = position_stack(vjust = 0.5), size = 3) +
   labs(title = "Use of F Toothpaste by Age", 
-       fill = "Concentration",
+       subtitle = "Latvia", 
        x = "Age group", 
        y = "", 
-       caption = "Numbers on bars corresponds to the number of persons. Latvia N = 2 270, Lithuania = 2 815."
-       ) + 
-  #geom_text(
-   # aes(label = n),
-    #size = 2.5, 
-    #position = position_fill(0.5)
-  # ) +
-  scale_y_continuous(labels = label_percent()) +
-  # divide by country
-  facet_grid( country ~ .) 
+       fill = "") + 
+  theme(legend.position = "none")
+```
+
+## 
+
+```{r}
+lithuania_age_plot <- df |>
+  select(age_group, country, f_concentration_group) |>
+  filter(f_concentration_group != "NA") |>
+  filter(country == "Lithuania") |> 
+  # calculate the counts
+  group_by(country, f_concentration_group, age_group) |>
+  count() |>
+  
+  # calculate the total counts for each age_group
+  group_by(country, age_group) |>
+  mutate(total_count = sum(n)) |>
+  
+  # calculate the percentages
+  ungroup() |>
+  mutate(percentage = (n / total_count) * 100) |> 
+  
+  # select the columns you want to keep
+  select(country, f_concentration_group, age_group, n, percentage) |>
+  # pivot wider
+  select(f_concentration_group, age_group, percentage) |>
+  # the plot
+  ggplot(aes(
+    x = age_group,
+    label = percentage,
+    y = percentage,
+    fill = f_concentration_group
+  )) +
+  geom_col() +
+  # adjust the scale
+  scale_y_continuous(labels = label_percent(scale = 1)) +
+  # change the colors
+  scale_fill_brewer(palette = "Spectral") +
+  # the labels
+geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            position = position_stack(vjust = 0.5), size = 3) +
+  labs(subtitle = "Lithuania", 
+       x = "Age group", 
+       y = "", 
+       fill = "F Concentration Group", 
+       caption = "Note: Due to rounding, the sum of percentages may not equal 100.")
+```
+
+```{r}
+latvia_age_plot / lithuania_age_plot
+  
 ```
 
 ```{r}
@@ -295,104 +374,181 @@ ggsave(
 )
 ```
 
+```{r}
+rm(latvia_age_plot, lithuania_age_plot)
+```
 
 ## Differences per age group
+
 ```{r}
-table(df$age_group, df$f_concentration_group)
+table(df$age_group, df$f_concentration_group) |> 
+  kable() |> 
+  kable_classic(full_width = F)
 ```
+
 ```{r}
 chisq.test(table(df$age_group, df$f_concentration_group))
 ```
+
 ```{r}
 mosaicplot(table(df$f_concentration_group, df$age_group), shade = T)
 ```
+
 ## Latvia per age
+
 ```{r}
 
-table(df_latvia$age_group, df_latvia$f_concentration_group)
+table(df_latvia$age_group, df_latvia$f_concentration_group)|> 
+  kable() |> 
+  kable_classic(full_width = F)
 ```
+
 ```{r}
 chisq.test(table(df_latvia$age_group, df_latvia$f_concentration_group))
 ```
+
 ```{r}
 mosaicplot(table(df_latvia$f_concentration_group, df_latvia$age_group), shade = T)
 ```
 
-
 ## Lithuania per age
+
 ```{r}
-  table(df_lithuania$age_group, df_lithuania$f_concentration_group)
+  table(df_lithuania$age_group, df_lithuania$f_concentration_group)|> 
+  kable() |> 
+  kable_classic(full_width = F)
 ```
+
 ```{r}
 chisq.test(table(df_lithuania$age_group, df_lithuania$f_concentration_group))
 ```
+
 ```{r}
 mosaicplot(table(df_lithuania$f_concentration_group, df_lithuania$age_group), shade = T)
 ```
 
-
 # Graph F concentration by living area
-Sergio, por favor, agrega valores en grafico
+
+## Figure 3 final
 
 ```{r}
-df %>% 
-  select(lives_in, country, f_concentration_group) %>% 
-  filter(f_concentration_group != "NA")%>% 
+latvia_Living_area_plot <- df |>
+  select(lives_in, country, f_concentration_group) |>
+  filter(f_concentration_group != "NA") |>
+  filter(country == "Latvia") |> 
+  # calculate the counts
+  group_by(country, f_concentration_group, lives_in) |>
+  count() |>
   
-    # calculate the percentages
-  group_by(country, f_concentration_group, lives_in) %>% 
-  count() %>% 
- 
-
-  group_by(country) %>% 
-  mutate(perc = n / sum(n) * 100) %>% 
-  mutate(perc = round(perc, 1)) %>% 
+  # calculate the total counts for each lives_in
+  group_by(country, lives_in) |>
+  mutate(total_count = sum(n)) |>
   
-  # make the plot
-
-   # make the plot
-   ggplot(aes(x = lives_in, 
-             y = perc, 
-             label = perc, 
-             fill = f_concentration_group)) +
-  geom_col(position="fill") +
+  # calculate the percentages
+  ungroup() |>
+  mutate(percentage = (n / total_count) * 100) |> 
   
+  # select the columns you want to keep
+  select(country, f_concentration_group, lives_in, n, percentage) |>
+  # pivot wider
+  select(f_concentration_group, lives_in, percentage) |>
+  # the plot
+  ggplot(aes(
+    x = lives_in,
+    label = percentage,
+    y = percentage,
+    fill = f_concentration_group
+  )) +
+  geom_col() +
+  # adjust the scale
+  scale_y_continuous(labels = label_percent(scale = 1)) +
+  # change the colors
   scale_fill_brewer(palette = "Spectral") +
-  labs(title = "Use of F Toothpaste by Area", 
-       fill = "Concentration",
-       x = "Area", 
+  # the labels
+geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            position = position_stack(vjust = 0.5), size = 3) +
+  labs(title = "Use of F Toothpaste by Living Area", 
+       subtitle = "Latvia", 
+       x = "Living Area group", 
        y = "", 
-       caption = " Numbers on bars corresponds to the number of persons. Latvia N = 2 270, Lithuania = 2 815."
-       ) + 
-#  geom_text(
-#    aes(label = perc),
-#    size = 2.5, 
-#    position = position_fill(0.5)
-#  ) +
-  scale_y_continuous(labels = label_percent()) +
-  # divide by country
-  facet_grid( country ~ .) 
+       fill = "") + 
+  theme(legend.position = "none")
+```
+
+```{r}
+lithuania_Living_area_plot <- df |>
+  select(lives_in, country, f_concentration_group) |>
+  filter(f_concentration_group != "NA") |>
+  filter(country == "Lithuania") |> 
+  # calculate the counts
+  group_by(country, f_concentration_group, lives_in) |>
+  count() |>
+  
+  # calculate the total counts for each lives_in
+  group_by(country, lives_in) |>
+  mutate(total_count = sum(n)) |>
+  
+  # calculate the percentages
+  ungroup() |>
+  mutate(percentage = (n / total_count) * 100) |> 
+  
+  # select the columns you want to keep
+  select(country, f_concentration_group, lives_in, n, percentage) |>
+  # pivot wider
+  select(f_concentration_group, lives_in, percentage) |>
+  # the plot
+  ggplot(aes(
+    x = lives_in,
+    label = percentage,
+    y = percentage,
+    fill = f_concentration_group
+  )) +
+  geom_col() +
+  # adjust the scale
+  scale_y_continuous(labels = label_percent(scale = 1)) +
+  # change the colors
+  scale_fill_brewer(palette = "Spectral") +
+  # the labels
+geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            position = position_stack(vjust = 0.5), size = 3) +
+  labs(subtitle = "Lithuania", 
+       x = "Living Area group", 
+       y = "", 
+       fill = "F Concentration Group", 
+       caption = "Note: Due to rounding, the sum of percentages may not equal 100.")
+```
+
+```{r}
+latvia_Living_area_plot / lithuania_Living_area_plot
+  
 ```
 
 ```{r}
 ggsave(
-  here("figures", "figure_area.pdf"),
+  here("figures", "figure_Living_area.pdf"),
   width = 20, height = 20, units = "cm", 
   # res = 300, 
   device='pdf'
 )
 ```
 
+```{r}
+rm(latvia_Living_area_plot, lithuania_Living_area_plot)
+```
 
 ## Differences per living area
 
 ```{r}
+df |> 
+  select(lives_in, f_concentration_group) |> 
+  gtsummary::tbl_summary(by = f_concentration_group) |> 
+  add_p()
+```
 
-table(df$lives_in, df$f_concentration_group)
-```
 ```{r}
-chisq.test(table(df$lives_in, df$f_concentration_group))
+chisq.test(table(df$lives_in, df$f_concentration_group)) 
 ```
+
 ```{r}
 mosaicplot(table(df$f_concentration_group, df$lives_in), shade = T)
 ```
@@ -401,11 +557,19 @@ mosaicplot(table(df$f_concentration_group, df$lives_in), shade = T)
 
 ```{r}
 
-table(df_latvia$lives_in, df_latvia$f_concentration_group)
+df_latvia |> 
+  # filter(country == "Latvia") |> 
+  select(lives_in, f_concentration_group) |> 
+  gtsummary::tbl_summary(by = f_concentration_group) |> 
+   modify_caption("**Latvia** (N = {N})") |> 
+  add_p() 
+ 
 ```
+
 ```{r}
 chisq.test(table(df_latvia$lives_in, df_latvia$f_concentration_group))
 ```
+
 ```{r}
 mosaicplot(table(df_latvia$f_concentration_group, df_latvia$lives_in), shade = T)
 ```
@@ -414,11 +578,21 @@ mosaicplot(table(df_latvia$f_concentration_group, df_latvia$lives_in), shade = T
 
 ```{r}
 
-table(df_lithuania$lives_in, df_lithuania$f_concentration_group)
+df_lithuania |> 
+  # filter(country == "Latvia") |> 
+  select(lives_in, f_concentration_group) |> 
+  gtsummary::tbl_summary(by = f_concentration_group) |> 
+   modify_caption("**Lithuania** (N = {N})") |> 
+  add_p() 
+ 
+
+# table(df_lithuania$lives_in, df_lithuania$f_concentration_group)
 ```
+
 ```{r}
 chisq.test(table(df_lithuania$lives_in, df_lithuania$f_concentration_group))
 ```
+
 ```{r}
 mosaicplot(table(df_lithuania$f_concentration_group, df_lithuania$lives_in), shade = T)
 ```
@@ -426,28 +600,31 @@ mosaicplot(table(df_lithuania$f_concentration_group, df_lithuania$lives_in), sha
 # F concentration analysis
 
 ```{r table concentration}
-janitor::tabyl(df$f_concentration) %>% 
-  adorn_pct_formatting()
+# janitor::tabyl(df$f_concentration) |> 
+#   adorn_pct_formatting()
 ```
 
 ```{r}
-df %>% 
+df |> 
   ggplot(aes(x = f_concentration)) + 
-  geom_histogram(bins = 10)
+  geom_histogram(bins = 10) + 
+  scale_x_log10()
 ```
 
-Table f concentration by age with means, etc
+### Table f concentration by age with means, etc
+
 ```{r table F by group age mean sd etc}
-df %>% 
-  group_by(`f_concentration_group`) %>% 
+df |> 
+  group_by(`f_concentration_group`) |> 
   summarise(n = n(), 
             mean = mean(`age`), 
             sd = sd(`age`), 
             min = min(`age`), 
-            max = max(`age`)) %>% 
-  mutate_if(is.numeric, round, 1)
+            max = max(`age`)) |> 
+  mutate_if(is.numeric, round, 1)|> 
+  kable() |> 
+  kable_classic(full_width = F)
 ```
-
 
 ```{r}
 df$f_concentration_test <- factor(df$f_concentration, 
@@ -459,92 +636,100 @@ df$f_concentration_test <- factor(df$f_concentration,
                               "1000 and 1500 ppm"))
 ```
 
-
+### Table f concentration by age
 
 ```{r table age by concentration}
-df %>% 
-  janitor::tabyl(age_group, `f_concentration`) %>% 
-  knitr::kable()
+df |> 
+  janitor::tabyl(age_group, `f_concentration`) |> 
+  kable() |> 
+  kable_classic(full_width = F)
 ```
 
+### Table f concentration by Live in
 
 ```{r table live by concentration}
-df %>% 
-  janitor::tabyl(`lives_in`, `f_concentration`) %>% 
-  janitor::adorn_totals(c("row", "col")) %>%
-  janitor::adorn_percentages("row") %>% 
-  janitor::adorn_pct_formatting(rounding = "half up", digits = 0) %>%
-  janitor::adorn_ns() %>%
-  janitor::adorn_title("combined") %>%
-  knitr::kable()
+df |> 
+  janitor::tabyl(`lives_in`, `f_concentration`) |> 
+  janitor::adorn_totals(c("row", "col")) |>
+  janitor::adorn_percentages("row") |> 
+  janitor::adorn_pct_formatting(rounding = "half up", digits = 0) |>
+  janitor::adorn_ns() |>
+  janitor::adorn_title("combined") |> 
+  kable() |> 
+  kable_classic(full_width = F)
 ```
 
+### Table f concentration by age group
 
 ```{r nice table age by concentration}
-df %>% 
-  janitor::tabyl(age_group, `f_concentration`) %>% 
-  janitor::adorn_totals(c("row", "col")) %>%
-  janitor::adorn_percentages("row") %>% 
-  janitor::adorn_pct_formatting(rounding = "half up", digits = 0) %>%
-  janitor::adorn_ns() %>%
-  janitor::adorn_title("combined") %>%
-  knitr::kable() %>% kableExtra::kable_styling(bootstrap_options = c("striped", "hover"))
+df |> 
+  janitor::tabyl(age_group, `f_concentration`) |> 
+  janitor::adorn_totals(c("row", "col")) |>
+  janitor::adorn_percentages("row") |> 
+  janitor::adorn_pct_formatting(rounding = "half up", digits = 0) |>
+  janitor::adorn_ns() |>
+  janitor::adorn_title("combined") |> 
+  knitr::kable() |> kableExtra::kable_styling(bootstrap_options = c("striped", "hover"))
 ```
-
-
 
 ```{r see names F free toothpastes }
-df %>%  
-  filter(`f_concentration` == "0 - No fluoride") %>% 
-  na.omit() %>%    # Using "data", filter out all rows with NAs in aa 
-  group_by(`toothpaste`) %>%          # Then, with the filtered data, group it by "bb"
-  summarise(Unique_Elements = n_distinct(`toothpaste`))  %>%   # Now summarise with unique elements per group
-  knitr::kable()
+# df |>  
+#   filter(`f_concentration` == "0 - No fluoride") |> 
+#   na.omit() |>    # Using "data", filter out all rows with NAs in aa 
+#   group_by(`toothpaste`) |>          # Then, with the filtered data, group it by "bb"
+#   summarise(Unique_Elements = n_distinct(`toothpaste`))  |>   # Now summarise with unique elements per group
+#   kable() |> 
+#   kable_classic(full_width = F)
 ```
-
-
 
 # Number of different toothpastes
 
-
 ```{r}
-df %>% 
-  mutate(toothpaste2 = fct_lump_prop(toothpaste, prop = .02)) %>% 
-  group_by(toothpaste2, country) %>% 
-  count() %>% 
+df |> 
+  mutate(toothpaste2 = fct_lump_prop(toothpaste, prop = .02)) |> 
+  group_by(toothpaste2, country) |> 
+  count() |> 
   pivot_wider(names_from = country, 
-              values_from = n) %>% 
-  arrange(desc(Lithuania)) %>% 
-  arrange(desc(Latvia))
+              values_from = n) |> 
+  arrange(desc(Lithuania)) |> 
+  arrange(desc(Latvia)) |> 
+  rename(Toothpaste = toothpaste2) |> 
+   kable() |> 
+  kable_classic(full_width = F)
 ```
 
-
+## Full list toothpastes by country
 
 ```{r check toothpastes names}
-df %>% 
-  group_by(toothpaste, country) %>% 
-  summarise(count = n())
+df |> 
+  group_by(toothpaste, country) |> 
+  summarise(count = n()) |> 
+  arrange(desc(count)) |> 
+  pivot_wider(names_from = country,
+              values_from = count) |> 
+  rename("Toothpaste Brand" = "toothpaste") |> 
+  kable() |> 
+  kable_classic(full_width = F)
+  
 ```
-
-
 
 ```{r see names all toothpastes }
-df %>%  
-  filter(!`f_concentration` == "0 - No fluoride") %>% 
-  #na.omit() %>%    # Using "data", filter out all rows with NAs in aa 
-  group_by(`toothpaste`) %>%          # Then, with the filtered data, group it by "bb"
-  summarise(Unique_Elements = n_distinct(`toothpaste`))  %>%   # Now summarise with unique elements per group
-  knitr::kable()
+# df |>  
+#   filter(!`f_concentration` == "0 - No fluoride") |> 
+#   #na.omit() |>    # Using "data", filter out all rows with NAs in aa 
+#   group_by(`toothpaste`) |>          # Then, with the filtered data, group it by "bb"
+#   summarise(Unique_Elements = n_distinct(`toothpaste`))  |>   # Now summarise with unique elements per group
+#   knitr::kable()
 ```
-
 
 # Different ways of presenting the differences between groups (not for publication)
 
 Check groups of F concentration by age
+
 ```{r F by age boxplot}
 
-df %>% 
-   filter(f_concentration_group != "NA") %>%
+df |> 
+   filter(f_concentration_group != "NA") |>
   ggplot(aes(x = `f_concentration_group`, y = `age`)) +
   
   geom_jitter(alpha = .05) +
@@ -558,13 +743,12 @@ df %>%
 
 ```
 
-
 ```{r plot porcentaje por edad}
-df %>%
-  filter(f_concentration_group != "NA") %>%
-  group_by(age_group, f_concentration_group) %>%
-  summarise(count = n()) %>%
-  mutate(perc = count / sum(count)) %>%
+df |>
+  filter(f_concentration_group != "NA") |>
+  group_by(age_group, f_concentration_group) |>
+  summarise(count = n()) |>
+  mutate(perc = count / sum(count)) |>
   ggplot(aes(x = age_group, y = perc * 100, fill = f_concentration_group)) +
   geom_bar(stat = "identity") +
   facet_grid(f_concentration_group ~ .) +
@@ -576,32 +760,38 @@ df %>%
   scale_fill_brewer(palette = "Spectral")
 
 ```
+
+## Figure 1
+
 ```{r}
-df %>% 
-  filter(f_concentration_group != "NA") %>% 
-  group_by(age_group, f_concentration_group) %>% 
-  summarise(count = n()) %>% 
-  mutate(perc=count/sum(count)) %>% 
+df |> 
+  filter(f_concentration_group != "NA") |> 
+  # filter(f_concentration_group != "Not available") |> 
+  group_by(age_group, f_concentration_group) |> 
+  summarise(count = n()) |> 
+  mutate(perc=count/sum(count)) |> 
   ggplot(aes(x = age_group, y = perc*100, fill = f_concentration_group)) +
   geom_bar(stat="identity") + 
-  facet_wrap(~f_concentration_group) + 
+  facet_wrap(f_concentration_group ~ . ) + 
   theme_minimal() + 
   labs(title = "Fluoride Concentration toothpaste by age group", 
        y = "Percentage", 
        x = "Age group", 
        fill = "Fluoride concentration") + 
+  # ylim(c(0, 70)) + 
   coord_flip() +
-  scale_fill_brewer(palette = "Spectral")
+  theme(legend.position = "none") +
+  scale_fill_manual(values = c("#E69F00", "#882E72", "#D55E00", "#F0E442", "#009E73")) + 
+  scale_y_continuous(labels = label_percent(scale = 1))
+  
 ```
 
-
-
 ```{r plot by city}
-df %>%
-  filter(f_concentration_group != "NA") %>% 
-  group_by(lives_in, f_concentration_group) %>%
-  summarise(count = n()) %>%
-  mutate(perc = count / sum(count)) %>%
+df |>
+  filter(f_concentration_group != "NA") |> 
+  group_by(lives_in, f_concentration_group) |>
+  summarise(count = n()) |>
+  mutate(perc = count / sum(count)) |>
   ggplot(aes(x = lives_in, y = perc * 100, fill = f_concentration_group)) +
   geom_bar(stat = "identity") +
   facet_wrap( ~ f_concentration_group) +
@@ -614,14 +804,17 @@ df %>%
   scale_fill_brewer(palette = "Spectral")
 ```
 
-# Codebook
 ```{r}
-# df %>% 
-#  select(-c(family_code, nr_of_family_members)) %>% 
-#  dataReporter::makeCodebook()
+df |> 
+  tabyl(age_group, f_concentration_group ) |> 
+  adorn_percentages() |> 
+  adorn_pct_formatting()
 ```
 
+# Codebook
 
-
-
-
+```{r}
+# df |> 
+#  select(-c(family_code, nr_of_family_members)) |> 
+#  dataReporter::makeCodebook()
+```

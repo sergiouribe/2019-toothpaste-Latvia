@@ -222,4 +222,3 @@ write_csv(df, "df.csv")
 ```{r}
 rm(df)
 ```
-
